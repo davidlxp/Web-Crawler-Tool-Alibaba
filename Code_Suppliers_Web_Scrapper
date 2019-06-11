@@ -1,0 +1,830 @@
+import re
+import os.path
+
+import pandas as pd
+import numpy as np
+
+import requests
+from bs4 import BeautifulSoup
+from selenium import webdriver
+import time
+
+import urllib.request
+import os #In this project, we use to remove picture in a folder
+
+import matplotlib.image as mpimg 
+import matplotlib.pyplot as plt 
+
+# Used to read text from a picture
+# tutorial of installation "https://stackoverflow.com/questions/51677283/tesseractnotfounderror-tesseract-is-not-installed-or-its-not-in-your-path"
+import pytesseract
+
+
+###### Defining bad words that will affect the process of gathering suppliers with correct product ######
+
+# bad words for 'black pepper'
+BadWords_black =  [ 'powder',
+                    'essential oil',
+                    'grinder',
+                    'grinding',
+                    'mill',
+                    'drying machine',
+                    'dryer',
+                    'drying',
+                    'extraction',
+                    'piperine',
+                    'machine',
+                    'machinery',
+                    'packing',
+                    'packaging',
+                    'glass',
+                    'crusher',
+                    'sachet',
+                    'oil',
+                    'sauce',
+                    'cream',
+                    'shaker',
+                    'oleoresin',
+                    'marinade',
+                    'extract',
+                    'pulverizer',
+                    'cutter',
+                    'cellar',
+                    'seasoning',
+                    'sorting',
+                    'airflow',
+                    'vibrating',
+                    'spin',
+                    'sieve',
+                    'Belt',
+                    'conveyor',
+                    'separator',
+                    'separating'
+                    'Screen',
+                    'paper',
+                    'box',
+                    'color',
+                    'sorter',
+                    'plastic',
+                    'bag',
+                    'flavor',
+                    'box',
+                    'analyzer',
+                    'tester',
+                    'coated',
+                    'grinding',
+                    'destoner',
+                    'capsules',
+                    'capsule',
+                    'ingredient',
+                    'grading',
+                    'cleaner',
+                    'processing',
+                    'plant',
+                    'moisture',
+                    'filling',
+                    'masterbatch',
+                    'plastic',
+                    'meter',
+                    'humidity',
+                    'stainless',
+                    'steel',
+                    'mixer',
+                    'jacketed',
+                    'cooking',
+                    'granite',
+                    'floor',
+                    'sterilizer',
+                    'autoclave',
+                    'disinfector',
+                    'medicine',
+                    'scrub',
+                    'shower',
+                    'body',
+                    'cloth',
+                    'women',
+                    'woman',
+                    'man',
+                    'men',
+                    'container',
+                    'jar',
+                    'tablet',
+                    'heating',
+                    'professional',
+                    'vibro',
+                    'electromagnetic',
+                    'gasoline',
+                    'vineyard',
+                    'cultivation',
+                    'bottle',
+                    'contain',
+                    'pump',
+                    'oven',
+                    'dehydrator',
+                    'sterilized',
+                    'pressure',
+                    'chopper',
+                    'slicer',
+                    'blanket',
+                    'cotton'
+                  ]
+
+
+# bad words for 'white pepper'
+BadWords_white =  [ 'powder',
+                    'essential oil',
+                    'grinder',
+                    'grinding',
+                    'mill',
+                    'drying machine',
+                    'dryer',
+                    'drying',
+                    'extraction',
+                    'piperine',
+                    'machine',
+                    'machinery',
+                    'packing',
+                    'packaging',
+                    'glass',
+                    'crusher',
+                    'sachet',
+                    'oil',
+                    'sauce',
+                    'cream',
+                    'shaker',
+                    'oleoresin',
+                    'marinade',
+                    'extract',
+                    'pulverizer',
+                    'cutter',
+                    'cellar',
+                    'seasoning',
+                    'sorting',
+                    'airflow',
+                    'vibrating',
+                    'spin',
+                    'sieve',
+                    'Belt',
+                    'conveyor',
+                    'separator',
+                    'separating'
+                    'Screen',
+                    'paper',
+                    'box',
+                    'color',
+                    'sorter',
+                    'plastic',
+                    'bag',
+                    'flavor',
+                    'box',
+                    'analyzer',
+                    'tester',
+                    'coated',
+                    'grinding',
+                    'destoner',
+                    'capsules',
+                    'capsule',
+                    'ingredient',
+                    'grading',
+                    'cleaner',
+                    'processing',
+                    'plant',
+                    'moisture',
+                    'filling',
+                    'masterbatch',
+                    'plastic',
+                    'meter',
+                    'humidity',
+                    'stainless',
+                    'steel',
+                    'mixer',
+                    'jacketed',
+                    'cooking',
+                    'granite',
+                    'floor',
+                    'sterilizer',
+                    'autoclave',
+                    'disinfector',
+                    'medicine',
+                    'scrub',
+                    'shower',
+                    'body',
+                    'cloth',
+                    'women',
+                    'woman',
+                    'man',
+                    'men',
+                    'container',
+                    'jar',
+                    'tablet',
+                    'heating',
+                    'professional',
+                    'vibro',
+                    'electromagnetic',
+                    'gasoline',
+                    'vineyard',
+                    'cultivation',
+                    'bottle',
+                    'contain',
+                    'pump',
+                    'oven',
+                    'dehydrator',
+                    'sterilized',
+                    'pressure',
+                    'chopper',
+                    'slicer',
+                    'blanket',
+                    'cotton'
+                  ]
+
+# bad words for 'garlic powder'
+BadWords_garlic =  ['essential oil',
+                    'grinder',
+                    'grinding',
+                    'mill',
+                    'drying machine',
+                    'dryer',
+                    'drying',
+                    'extraction',
+                    'piperine',
+                    'machine',
+                    'machinery',
+                    'packing',
+                    'packaging',
+                    'glass',
+                    'crusher',
+                    'sachet',
+                    'oil',
+                    'sauce',
+                    'cream',
+                    'shaker',
+                    'oleoresin',
+                    'marinade',
+                    'extract',
+                    'pulverizer',
+                    'cutter',
+                    'cellar',
+                    'seasoning',
+                    'sorting',
+                    'airflow',
+                    'vibrating',
+                    'spin',
+                    'sieve',
+                    'Belt',
+                    'conveyor',
+                    'separator',
+                    'separating'
+                    'Screen',
+                    'paper',
+                    'box',
+                    'color',
+                    'sorter',
+                    'plastic',
+                    'bag',
+                    'flavor',
+                    'box',
+                    'analyzer',
+                    'tester',
+                    'coated',
+                    'grinding',
+                    'destoner',
+                    'capsules',
+                    'capsule',
+                    'ingredient',
+                    'grading',
+                    'cleaner',
+                    'processing',
+                    'plant',
+                    'moisture',
+                    'filling',
+                    'masterbatch',
+                    'plastic',
+                    'meter',
+                    'humidity',
+                    'stainless',
+                    'steel',
+                    'mixer',
+                    'jacketed',
+                    'cooking',
+                    'granite',
+                    'floor',
+                    'sterilizer',
+                    'autoclave',
+                    'disinfector',
+                    'medicine',
+                    'scrub',
+                    'shower',
+                    'body',
+                    'cloth',
+                    'women',
+                    'woman',
+                    'man',
+                    'men',
+                    'container',
+                    'jar',
+                    'tablet',
+                    'heating',
+                    'professional',
+                    'vibro',
+                    'electromagnetic',
+                    'gasoline',
+                    'vineyard',
+                    'cultivation',
+                    'bottle',
+                    'contain',
+                    'pump',
+                    'oven',
+                    'dehydrator',
+                    'production',
+                    'paste',
+                    'sterilized',
+                    'pressure',
+                    'chopper',
+                    'slicer',
+                    'blanket',
+                    'cotton'
+                  ]
+                  
+                  
+###### The final biggest function to collect all suppliers' information and construct a Excl Database #####    
+    
+    
+# The program need the following two libraries and software(exe.):
+# 1.Selenium webdriver (for robotic web scrapping)
+# 2.Pytesseract (for reading information from )
+
+# product_name: the kind of product you want to find (eg. black pepper)
+# bad_word_lst: the bad words you want to avoid when finding the suppliers
+# page_end: how many pages on Alibaba you want to scrap (Maximum is 100 pages)
+
+def ScrapTool_suppliers_to_db(product_name, bad_word_lst, user_name, password, page_end=100):
+    
+    ######################## Useful Functions ########################
+
+    # one_seller_info = All_sellers_info[i]
+    def gt_one_seller_URL (one_seller_info):
+        pre_URL = one_seller_info.find_previous_sibling("a").get('href')
+        add_on = 'http:'
+        seller_URL = add_on + pre_URL
+        return(seller_URL)
+
+
+    # Checking the country 
+    def gt_country_code (one_seller_info):
+        pre_country_code = one_seller_info.find("div",{"style":"display:flex;align-items:center;height:100%;"}).text
+        country_code = pre_country_code.replace("\n","")
+        return(country_code)
+
+
+    # "product_desc" is a sentence (eg. "This is good quality black pepper"), text='' (eg."black pepper")
+    # eg. checking if the product description contains 'black pepper'
+    def is_the_product (product_desc, text):
+        low_text = text.lower() # text to lower case
+        low_case_description = product_desc.lower() # description to lower case
+        boo = low_text in low_case_description
+        return(boo)
+
+
+    # 'product_desc' is a small section of source code that seperated from seller's main page source code
+    # "product_desc" = product_description[i], 'lst_words' = bad words list 
+    # If these bad words existing in the products' description, then the product listed is not the spices we are looking for
+    def is_other_product (product_desc, lst_words):
+        low_case_description = product_desc.lower() # description to lower case
+        bad_word = [each.lower() for each in lst_words] # bad words to lower case
+        if any(word in low_case_description for word in bad_word):
+            boo = True
+        else:
+            boo = False
+        return(boo)
+
+
+    # Given company main page URL, finding out if the company is a manufacturer
+    def is_a_manufacturer (company_url):
+
+        # In order to track if anything went wrong with gathering the business type, I built a loop and print to 
+        # show at which company we stucked. Here, I simplified the company URL to show at which company we stuck
+        keep_idx = company_url.index('company_profile.html')
+        show = company_url[0:keep_idx]
+
+        business_type = None
+
+        while business_type == None:
+
+            r = requests.get(company_url)
+            soup = BeautifulSoup(r.text,'html.parser')
+
+            try:
+                business_type = soup.findAll('div',{'class':'content-value'})[0].text.lower()
+            except: pass
+            print('first {}'.format(show))
+
+            try:    
+                type_text = soup.find("td",{"class":"col-value"}).text.lower()
+                type_text = type_text.replace(' ','') # getting rid of the extra symbol
+                business_type = type_text.replace('\n','')
+            except: pass
+            print('second {}'.format(show))
+
+        boo = "manufacturer" in business_type    
+        return(boo)
+
+
+    # Select the manufacturer suppliers from the suppliers main page lists
+    def get_manufac_comp(all_main_pages):
+
+        url_lsts = all_main_pages
+
+        main_pages_manufac = []
+        for each in url_lsts:
+            bool_ = is_a_manufacturer(each)
+
+            if bool_ == True:
+                main_pages_manufac.append(each)
+
+            print("{} checked (manufacturer)".format(each))
+        return(main_pages_manufac)
+
+
+    # Split the product name to the text format that can be used in URL link for searching purpose
+    # location variable means the location you want to use this splited words
+    def name_to_search (name, location):
+        low_name = name.lower()
+        if location == "main":
+            search_name = low_name.replace(" ","+")
+        if location == "product":
+            search_name = low_name.replace(" ","%20")
+        return(search_name)
+
+
+    # Getting the URL link for the product page
+    def get_product_URL(seller_url, product_name):
+        prep_text = name_to_search(product_name,"product")
+        product_search_addon = "search/product?SearchText={}".format(prep_text)
+
+        index_keep = seller_url.index('company_profile.html')
+        product_search_URL = seller_url[0:index_keep] + product_search_addon
+
+        return(product_search_URL)
+
+
+    # Getting the URL link for the contact page
+    def get_contact_URL(seller_url):
+        contact_search_addon = "contactinfo.html"
+
+        index_keep = seller_url.index('company_profile.html') 
+        contact_search_URL = seller_url[0:index_keep] + contact_search_addon
+
+        return(contact_search_URL)
+
+
+    # Getting the name of the company
+    def get_company_name(contact_page_url):
+        r = requests.get(contact_page_url)
+        soup = BeautifulSoup(r.text,"html.parser")
+
+        try:
+            company_name = soup.find('span',{'class':'cp-name'}).text
+        except:
+            company_name = soup.find('span',{'class':"company-name"}).text
+
+        finally:
+            return(company_name)
+
+
+    # Getting the header image link of the company from the contact page
+    def head_image_link(contact_web):
+        pic_url = []
+
+        try:
+            r = requests.get(contact_web)
+            soup = BeautifulSoup(r.text,"html.parser")
+
+            # Find the text cluster that contains the img_link url
+            img_source = soup.find("img",{"class":"bg-image"})
+            img_source = str(img_source)
+
+            # the url link of the image is located right to the string 'src='
+            pic_start_idx=img_source.index('src=')+5
+            pic_end_idx=img_source.index('.webp')+5
+
+            pic_url = img_source[pic_start_idx:pic_end_idx]
+            pic_url = "http:" + pic_url
+        except: pass
+        return(pic_url)
+
+
+    # A function takes a image web-link and extract the email from address from the picture
+    def img_read_contact(image_link):
+        # Just in case if do not have 'pytesseract.exe' in the local, the whole process of web-scrapping still work
+        try:
+            # Call pytesseract method
+            pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+            urllib.request.urlretrieve(image_link, "company_info.jpg")
+            # Read Images 
+            img = mpimg.imread('company_info.jpg')
+            img_text = pytesseract.image_to_string(img, lang='eng')
+
+            # seperating the text from the img into a list
+            img_text = img_text.replace("\n"," ")
+            img_txt_lst = img_text.split(" ")
+
+            # try to get email, not every company's header picture contains email
+            email = []
+            for each in img_txt_lst:
+                if '@' in each:
+                    email.append(each)
+        except: pass
+
+        # try to delete the local picture         
+        try: 
+            os.remove("company_info.jpg")
+        except: pass
+
+        # finding the string that with @ are real email, because sometimes we may get sth like "@", "@@@"
+        # a real email must contain at least "@" and ".com", which is at least 5 elements
+        real_email = []
+        try:
+            for each in email:
+                if len(each) > 5:
+                    real_email.append(each)
+        except: pass
+        return(real_email)
+
+
+    # Finding the longest word in a list of strings, if its empty, return NA
+    def find_longest_word(lst):
+        if not lst:
+            return('NA')
+
+        longest_word = ''
+        for each in lst:
+            if len(each) > len(longest_word):
+                longest_word = each
+        return(longest_word)
+
+
+    # Using Selenium to get contact information like phone number and contact name
+    # Input is Alibaba account, password and contact page URL link
+    # There are four output Telephone, Mobile, Fax and Contact Name
+    def selenium_get_phone(all_contact_links, user_name, password):
+
+        ### Login to Alibaba ###
+        # Build connection
+        try:
+            driver = webdriver.Firefox()
+            time.sleep(5) # sleep for 5 seconds to wait for webdriver open
+        except:
+            print("Please install geckodriver and add the address of 'exe' to System Path to run the Firefox webdriver")
+
+        # Alibaba login page
+        Ali_login_URL = "https://passport.alibaba.com/icbu_login.htm?return_url=https%3A%2F%2Fjslianfu.en.alibaba.com%2Fcontactinfo.html"
+        driver.get(Ali_login_URL)
+        time.sleep(1)
+        # Refresh just in case some potential error happens
+        driver.refresh()
+        time.sleep(1)
+
+        # Login to the account
+        driver.find_element_by_name("loginId").send_keys('daaavidlxp@hotmail.com')
+        time.sleep(1)
+        driver.find_element_by_name("password").send_keys('lxpeng1996')
+        time.sleep(1)
+        driver.find_element_by_name("submit-btn").click()
+        time.sleep(3)
+
+
+        ### Start to get the phone number using selenium ###
+        c_links = all_contact_links
+
+        tele_num =[]
+        mobile_num = []
+        fax_num = []
+        contact_name = []
+
+        for each in c_links:
+
+            driver.get(each)
+            time.sleep(2) # wait for the web-driver to click
+
+            # Checking if the 'View details' botton exists 
+            check = []
+            try:
+                check = driver.find_element_by_link_text("View details")
+            except: pass
+
+            # This means if 'View details' button exists
+            if check != []:
+                # Just in case the inconsistency of selenium click, I run this 3 times to make sure I clicked on it
+                for i in range(3):
+                    try:
+                        # Click to view detail of phone number
+                        driver.find_element_by_link_text("View details").click()
+                    except: pass # Just in case sometimes there is no view detail button
+
+
+
+            list_of_table = []
+            try:
+                # Getting the list of contact table information
+                # 'find_elements_by_css_selector("*")' means getting child
+                list_of_table = driver.find_element_by_xpath("//table[@class='info-table']").find_elements_by_css_selector("*")
+            except: pass # Just in case sometimes there is no table
+
+            # Getting the list of contact info
+            list_info = []
+            try:
+                for every in list_of_table:
+                    try:
+                        x = every.text
+                        list_info.append(x)
+                    except: 
+                        list_info.append(' ') # Sometimes the list_of_table can't get text, we leave it ' '
+            except: pass # Sometimes the list_of_table might be empty, so we use try...except here
+
+            # Getting phone number and Fax number        
+            Telephone = 'NA'
+            Mobile = 'NA'
+            Fax = 'NA'
+
+            try:
+                Telephone = find_longest_word([x for x in list_info if "Telephone" in x]) 
+                Mobile = find_longest_word([x for x in list_info if "Mobile" in x])
+                Fax = find_longest_word([x for x in list_info if "Fax" in x])
+            except: pass # Sometimes the list_info might be empty, the list_info[i] might not work, so we use try...except
+
+            # Append Numbers to list
+            tele_num.append(Telephone)
+            mobile_num.append(Mobile)
+            fax_num.append(Fax)
+
+            # Getting contact name, and sometimes it might not exists    
+            try:
+                name = driver.find_element_by_xpath("//div[@class= 'contact-name']").text
+                contact_name.append(name)
+            except: 
+                contact_name.append('NA')
+
+            print("'{}' fetched successfully".format(each))
+
+
+        driver.close()        
+        return(tele_num, mobile_num, fax_num, contact_name)
+
+
+    # Getting one company's product and price from the product_page 
+    # The output is a list of many products 
+    def OneSeller_product_n_price(product_page_URL, product_name, bad_word_lst):
+
+        r = requests.get(product_page_URL)
+        soup = BeautifulSoup(r.text,"html.parser")
+
+        # defining the output list
+        all_pdt_n_price = []
+
+        # Using try...except in case of empty search
+        try:
+            ### Getting valid products name, and their price and measurement ###
+            store_products = soup.findAll("span",{"class":"title-con"})
+
+            for i in range(len(store_products)):
+                each = store_products[i].text
+
+                is_product = is_the_product(each, product_name)
+                is_others = is_other_product(each, bad_word_lst)
+
+                if is_product == True and is_others == False:
+
+                    # getting price and measurement for this product
+                    # finding the price info based on the path we find product name is more accurate
+                    price_n_measure = store_products[i].parent.parent.next_sibling['title']
+
+                    pdt_n_price = "{}  ({})".format(each, price_n_measure)
+                    all_pdt_n_price.append(pdt_n_price)
+        except: pass 
+
+        return([all_pdt_n_price])
+
+
+    # product_name should looks like "black pepper"
+    # bad_word_lst for black pepper is BadWords_black
+    def collect_seller_URL(product_name, bad_word_lst, page_end):
+        text = product_name.lower() # The product we want to search
+        bad_word = bad_word_lst # The list of bad words we want to avoid in the products' description
+
+        main_search_name = name_to_search(text, 'main')
+
+        Sellers_URL = []
+        for i in range(1,page_end+1):
+            page = i
+            link = "https://www.alibaba.com/trade/search?fsb=y&IndexArea=product_en&CatId=&SearchText={}&viewtype=&page={}&country=CN".format(main_search_name,page)
+            r = requests.get(link)
+            soup = BeautifulSoup(r.text,'html.parser')
+
+            All_info = soup.findAll('div',{"class":"list-item__seller-info"}) # All sellers' info
+            Product_desc = soup.findAll("h2",{"class":"title"}) # All products description
+
+            num_of_sellers = len(All_info) # The number of products listed on this page
+
+            for j in range(0,num_of_sellers):
+
+                seller = All_info[j] # Seller's info for this iteration
+                pd = Product_desc[j].contents[1].text # Info of the listed product in sentence (not source code)
+
+                Country = gt_country_code(seller)
+                is_product = is_the_product(pd,text)
+                is_other = is_other_product(pd,bad_word)
+
+                if Country == "CN" and is_product == True and is_other == False:
+                    URL = gt_one_seller_URL(seller)
+
+                    if URL not in Sellers_URL:
+                        Sellers_URL.append(URL)
+                        print("Gathered '{}'".format(URL))
+            print("Page {} completed".format(i))
+
+        return(Sellers_URL)
+    
+    ######################## Getting Suppliers Info ########################
+    
+    # Adjust product name to lower case
+    low_product = product_name.lower()
+    
+    # Adjust the bad word list to lower case
+    low_bad = [each.lower() for each in bad_word_lst] 
+    
+    # Getting all Main page URL that satisfied "country = China" "product name" and not containing "bad_word"
+    Sellers_URL = collect_seller_URL(low_product, low_bad, page_end)
+    
+    # Get only the suppliers that are manufacturer (all pages)
+    ### Tried the step of filter manufacturer into gather main page URL fcn, it just taka a long time, so I seperated out this function
+    all_main_URL = get_manufac_comp(Sellers_URL)
+    
+    # Get the contact page (all pages)
+    all_contact_URL = []
+    for each in all_main_URL:
+        link = get_contact_URL(each)
+        all_contact_URL.append(link)
+    print("Got all contact URL")
+    print(all_contact_URL)
+    
+    # Get the product page (all pages)
+    all_product_URL = []
+    for each in all_main_URL:
+        link = get_product_URL(each, low_product)
+        all_product_URL.append(link)
+    print("Got all product URL")
+    print(all_product_URL)
+    
+    # Getting Suppliers Telephone, Mobile, Fax and Contact name
+    telephone, mobile, fax, contact_name = selenium_get_phone(all_contact_URL, user_name, password)
+    
+    # Getting the row of dataframe by reading through each suppliers
+    num_comp = len(all_main_URL)
+    
+    # Building a empty DataFrame
+    col_name = ['Company', 'Contact_Name', 'Telephone', 'Mobile', 'Fax', 'E-mail', 'More_contact_info[Header Image]', 'Alibaba_Website', 'Product_and_Price']
+    df_supplier = pd.DataFrame(columns=col_name)
+    
+    # For loop to get suppliers' information one-by-one and load into the DataFrame
+    for i in range(num_comp):
+        
+        main_web = all_main_URL[i]
+        contact_web = all_contact_URL[i]
+        product_web = all_product_URL[i]
+        
+        company = get_company_name(contact_web) # get company name
+        image_link = head_image_link(contact_web) # get the image web link for potential extra contact information
+        email = img_read_contact(image_link) # read the potential email info from the header picture of the supplier 
+        pdt_n_price = OneSeller_product_n_price(product_web, low_product, low_bad)
+        
+        # Combining the supplier's information into a list
+        supplier_tuples = list(zip([company], [contact_name[i]], [telephone[i]], [mobile[i]], [fax[i]], [email], [image_link], [main_web], pdt_n_price))
+        
+        df_supplier = df_supplier.append(pd.DataFrame(supplier_tuples, columns=col_name),ignore_index=True)
+    
+        print("'{}' information gathered\n This is #{} supplier in the list\n There are {} suppliers in total".format(company, i+1, num_comp))
+    
+    # Convert the suppliers' dataframe to csv file
+    # Adding try...pass to make sure in case the path of file is denied, we still get the function output
+    try:
+        file_name = "{}_supplier.csv".format(low_product.replace(" ","_"))
+
+        if os.path.isfile(file_name): # remove the csv file if already exists
+            os.remove(file_name)
+
+        df_supplier.to_csv(file_name,encoding='utf-8',index=False)
+        print("saved at {}".format(os.getcwd()))
+    except: pass
+    
+    # print and show the df
+    return(df_supplier)
+    
+    
+    
+###### Runing the funciton and getting suppliers' dataframe
+### So far we can get the information for 'black pepper', 'white pepper', 'garlic powder'
+### You need to input the Alibaba [Account] name and [password] in the following blank
+
+suppliers_df = ScrapTool_suppliers_to_db('black pepper', BadWords_black, [Account], [password], page_end=100)
+suppliers_df 
